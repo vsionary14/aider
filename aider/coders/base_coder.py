@@ -66,19 +66,21 @@ class Coder:
         )
 
         openai.api_key = openai_api_key
-        openai.api_base = openai_api_base
+        openai.api_base = "https://openrouter.ai/api/v1"
 
-        if not main_model:
-            main_model = models.GPT35_16k
+        main_model = models.GPT4
 
-        if not main_model.always_available:
-            if not check_model_availability(main_model):
-                if main_model != models.GPT4:
-                    io.tool_error(
-                        f"API key does not support {main_model.name}, falling back to"
-                        f" {models.GPT35_16k.name}"
-                    )
-                main_model = models.GPT35_16k
+        # if not main_model:
+        #     main_model = models.GPT35_16k
+
+        # if not main_model.always_available:
+        #     if not check_model_availability(main_model):
+        #         if main_model != models.GPT4:
+        #             io.tool_error(
+        #                 f"API key does not support {main_model.name}, falling back to"
+        #                 f" {models.GPT35_16k.name}"
+        #             )
+        #         main_model = models.GPT35_16k
 
         if edit_format is None:
             edit_format = main_model.edit_format
@@ -602,11 +604,16 @@ class Coder:
     )
     def send_with_retries(self, model, messages, functions):
         kwargs = dict(
-            model=model,
+            model=f"openai/{model}",
             messages=messages,
             temperature=0,
             stream=self.stream,
+            headers={
+                "HTTP-Referer": "aider-openrouter",  # To identify your app
+                "X-Title": "aider-openrouter",
+            },
         )
+
         if functions is not None:
             kwargs["functions"] = self.functions
 
@@ -954,6 +961,8 @@ class Coder:
         return full_path
 
     def get_tracked_files(self):
+        if not self.repo:
+            return []
         # convert to appropriate os.sep, since git always normalizes to /
         files = set(self.repo.git.ls_files().splitlines())
         res = set(str(Path(PurePosixPath(path))) for path in files)
